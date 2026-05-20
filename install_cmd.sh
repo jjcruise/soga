@@ -29,7 +29,7 @@ fi
 echo -e "${green}开始下载 soga-cmd 最新版${plain}"
 
 if [ $# == 0 ] ;then
-    wget -N --no-check-certificate -O /usr/bin/soga https://github.com/vaxilu/soga-cmd/releases/latest/download/soga-cmd-linux-${arch}
+    wget --no-check-certificate -O /usr/bin/soga https://github.com/vaxilu/soga-cmd/releases/latest/download/soga-cmd-linux-${arch}
     if [[ $? -ne 0 ]]; then
         echo -e "${red}下载 soga-cmd 失败，请确保你的服务器能够下载 Github 的文件${plain}"
         exit 1
@@ -38,7 +38,7 @@ else
     last_version=$1
     url="https://github.com/vaxilu/soga-cmd/releases/download/${last_version}/soga-cmd-linux-${arch}"
     echo -e "开始下载 soga-cmd $1"
-    wget -N --no-check-certificate -O /usr/bin/soga ${url}
+    wget --no-check-certificate -O /usr/bin/soga ${url}
     if [[ $? -ne 0 ]]; then
         echo -e "${red}下载 soga-cmd $1 失败，请确保此版本存在${plain}"
         exit 1
