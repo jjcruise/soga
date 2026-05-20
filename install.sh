@@ -125,7 +125,7 @@ install_soga() {
 #            exit 1
 #        fi
         echo -e "开始安装 soga 最新版"
-        wget -N --no-check-certificate -O /usr/local/soga.tar.gz https://github.com/vaxilu/soga/releases/latest/download/soga-linux-${arch}.tar.gz
+        wget --no-check-certificate -O /usr/local/soga.tar.gz https://github.com/vaxilu/soga/releases/latest/download/soga-linux-${arch}.tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}下载 soga 失败，请确保你的服务器能够下载 Github 的文件${plain}"
             exit 1
@@ -134,7 +134,7 @@ install_soga() {
         last_version=${1#v}
         url="https://github.com/vaxilu/soga/releases/download/${last_version}/soga-linux-${arch}.tar.gz"
         echo -e "开始安装 soga v${last_version}"
-        wget -N --no-check-certificate -O /usr/local/soga.tar.gz ${url}
+        wget --no-check-certificate -O /usr/local/soga.tar.gz ${url}
         if [[ $? -ne 0 ]]; then
             echo -e "${red}下载 soga v${last_version} 失败，请确保此版本存在${plain}"
             exit 1
@@ -183,7 +183,7 @@ install_soga() {
     if [[ ! -f /etc/soga/routes.toml ]]; then
         cp routes.toml /etc/soga/
     fi
-    wget -N --no-check-certificate -O /usr/bin/soga https://github.com/vaxilu/soga-cmd/releases/latest/download/soga-cmd-linux-${arch}
+    wget --no-check-certificate -O /usr/bin/soga https://github.com/vaxilu/soga-cmd/releases/latest/download/soga-cmd-linux-${arch}
     if [[ $? -ne 0 ]]; then
         echo -e "${red}下载 soga 管理脚本失败，请确保你的服务器能够下载 Github 的文件${plain}"
         exit 1
