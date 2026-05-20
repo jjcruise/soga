@@ -131,12 +131,12 @@ install_soga() {
             exit 1
         fi
     else
-        last_version=$1
+        last_version=${1#v}
         url="https://github.com/vaxilu/soga/releases/download/${last_version}/soga-linux-${arch}.tar.gz"
-        echo -e "开始安装 soga v$1"
+        echo -e "开始安装 soga v${last_version}"
         wget -N --no-check-certificate -O /usr/local/soga.tar.gz ${url}
         if [[ $? -ne 0 ]]; then
-            echo -e "${red}下载 soga v$1 失败，请确保此版本存在${plain}"
+            echo -e "${red}下载 soga v${last_version} 失败，请确保此版本存在${plain}"
             exit 1
         fi
     fi
@@ -183,30 +183,58 @@ install_soga() {
     if [[ ! -f /etc/soga/routes.toml ]]; then
         cp routes.toml /etc/soga/
     fi
-    curl -o /usr/bin/soga -Ls https://raw.githubusercontent.com/vaxilu/soga/master/soga.sh
+    wget -N --no-check-certificate -O /usr/bin/soga https://github.com/vaxilu/soga-cmd/releases/latest/download/soga-cmd-linux-${arch}
+    if [[ $? -ne 0 ]]; then
+        echo -e "${red}下载 soga 管理脚本失败，请确保你的服务器能够下载 Github 的文件${plain}"
+        exit 1
+    fi
     chmod +x /usr/bin/soga
-    curl -o /usr/bin/soga-tool -Ls https://raw.githubusercontent.com/vaxilu/soga/master/soga-tool-${arch}
-    chmod +x /usr/bin/soga-tool
     echo -e ""
     echo "soga 管理脚本使用方法: "
-    echo "------------------------------------------"
-    echo "soga                    - 显示管理菜单 (功能更多)"
-    echo "soga start              - 启动 soga"
-    echo "soga stop               - 停止 soga"
-    echo "soga restart            - 重启 soga"
-    echo "soga status             - 查看 soga 状态"
-    echo "soga enable             - 设置 soga 开机自启"
-    echo "soga disable            - 取消 soga 开机自启"
-    echo "soga log                - 查看 soga 日志"
-    echo "soga log n              - 查看 soga 最后 n 行日志"
-    echo "soga update             - 更新 soga"
-    echo "soga update x.x.x       - 更新 soga 指定版本"
-    echo "soga config             - 显示配置文件内容"
-    echo "soga config xx=xx yy=yy - 自动设置配置文件"
-    echo "soga install            - 安装 soga"
-    echo "soga uninstall          - 卸载 soga"
-    echo "soga version            - 查看 soga 版本"
-    echo "------------------------------------------"
+    echo "----------------------------------------------------------"
+    echo "soga                              - 显示管理菜单 (功能更多)"
+    echo "soga list                         - 列出已有的实例及状态"
+    echo "soga new <name> [k1=v1 ...]       - 新建实例"
+    echo "soga remove <name> [name...]      - 移除实例"
+    echo "soga start [name]                 - 启动实例"
+    echo "soga stop [name]                  - 停止实例"
+    echo "soga restart [name]               - 重启实例"
+    echo "soga enable [name]                - 设置实例开机自启"
+    echo "soga disable [name]               - 取消实例开机自启"
+    echo "soga log [name]                   - 查看实例日志(默认 1000 行)"
+    echo "soga log [name] -f                - 持续输出实例日志"
+    echo "soga config [name]                - 查看实例配置文件"
+    echo "soga config [name] k1=v1 k2=v2    - 修改或新增配置"
+    echo "soga update [version]             - 安装/更新 soga"
+    echo "soga uninstall                    - 完全卸载 soga"
+    echo "soga self-update                  - 更新管理脚本"
+    echo "soga version                      - 查看版本"
+    echo "----------------------------------------------------------"
+}
+
+apply_configs() {
+    local conf_file="/etc/soga/soga.conf"
+    if [[ ! -f ${conf_file} ]]; then
+        echo -e "${red}配置文件 ${conf_file} 不存在，跳过配置写入${plain}"
+        return
+    fi
+    for kv in "$@"; do
+        local key="${kv%%=*}"
+        local value="${kv#*=}"
+        if [[ -z "${key}" || "${key}" == "${kv}" ]]; then
+            echo -e "${yellow}忽略无效配置参数: ${kv}${plain}"
+            continue
+        fi
+        local esc_value
+        esc_value=$(printf '%s\n' "${value}" | sed -e 's/[\/&|]/\\&/g')
+        if grep -Eq "^[[:space:]]*${key}[[:space:]]*=" "${conf_file}"; then
+            sed -i -E "s|^[[:space:]]*${key}[[:space:]]*=.*|${key}=${esc_value}|" "${conf_file}"
+            echo -e "${green}已更新配置: ${key}=${value}${plain}"
+        else
+            echo "${key}=${value}" >> "${conf_file}"
+            echo -e "${green}已添加配置: ${key}=${value}${plain}"
+        fi
+    done
 }
 
 is_cmd_exist "systemctl"
@@ -215,7 +243,30 @@ if [[ $? != 0 ]]; then
     exit 1
 fi
 
+version=""
+configs=()
+for arg in "$@"; do
+    if [[ "${arg}" == *"="* ]]; then
+        configs+=("${arg}")
+    elif [[ -z "${version}" ]]; then
+        version="${arg}"
+    fi
+done
+
 echo -e "${green}开始安装${plain}"
 install_base
 install_acme
-install_soga $1
+install_soga ${version}
+
+if [[ ${#configs[@]} -gt 0 ]]; then
+    echo -e "${green}开始写入配置${plain}"
+    apply_configs "${configs[@]}"
+    systemctl restart soga
+    sleep 2
+    check_status
+    if [[ $? == 0 ]]; then
+        echo -e "${green}soga 重启成功${plain}"
+    else
+        echo -e "${red}soga 可能启动失败，请稍后使用 soga log 查看日志信息${plain}"
+    fi
+fi
